@@ -43,27 +43,6 @@ from glance.tests import utils as test_utils
 execute, get_unused_port = test_utils.execute, test_utils.get_unused_port
 
 
-def runs_sql(func):
-    """
-    Decorator for a test case method that ensures that the
-    sql_connection setting is overridden to ensure a disk-based
-    SQLite database so that arbitrary SQL statements can be
-    executed out-of-process against the datastore...
-    """
-    @functools.wraps(func)
-    def wrapped(*a, **kwargs):
-        test_obj = a[0]
-        orig_sql_connection = test_obj.registry_server.sql_connection
-        try:
-            if orig_sql_connection.startswith('sqlite'):
-                test_obj.registry_server.sql_connection =\
-                        "sqlite:///tests.sqlite"
-            func(*a, **kwargs)
-        finally:
-            test_obj.registry_server.sql_connection = orig_sql_connection
-    return wrapped
-
-
 class Server(object):
     """
     Class used to easily manage starting and stopping
@@ -89,6 +68,7 @@ class Server(object):
         self.exec_env = None
         self.deployment_flavor = ''
         self.server_control_options = ''
+        self.needs_database = False
 
     def write_conf(self, **kwargs):
         """
@@ -145,6 +125,8 @@ class Server(object):
         # Ensure the configuration file is written
         overridden = self.write_conf(**kwargs)[1]
 
+        self.create_database()
+
         cmd = ("%(server_control)s %(server_name)s start "
                "%(conf_file_name)s --pid-file=%(pid_file)s "
                "%(server_control_options)s"
@@ -155,6 +137,23 @@ class Server(object):
                        expect_exit=expect_exit,
                        expected_exitcode=expected_exitcode,
                        context=overridden)
+
+    def create_database(self):
+        """Create database if required for this server"""
+        if self.needs_database:
+            conf_dir = os.path.join(self.test_dir, 'etc')
+            utils.safe_mkdirs(conf_dir)
+            conf_filepath = os.path.join(conf_dir, 'glance-manage.conf')
+
+            with open(conf_filepath, 'wb') as conf_file:
+                conf_file.write('[DEFAULT]\n')
+                conf_file.write('sql_connection = %s' % self.sql_connection)
+                conf_file.flush()
+
+            cmd = ('bin/glance-manage db_sync --config-file %s'
+                   % conf_filepath)
+            execute(cmd, no_venv=self.no_venv, exec_env=self.exec_env,
+                    expect_exit=True)
 
     def stop(self):
         """
@@ -212,6 +211,12 @@ class ApiServer(Server):
         self.policy_file = policy_file
         self.policy_default_rule = 'default'
         self.server_control_options = '--capture-output'
+
+        self.needs_database = True
+        default_sql_connection = 'sqlite:///tests.sqlite'
+        self.sql_connection = os.environ.get('GLANCE_TEST_SQL_CONNECTION',
+                                             default_sql_connection)
+
         self.conf_base = """[DEFAULT]
 verbose = %(verbose)s
 debug = %(debug)s
@@ -248,6 +253,8 @@ image_cache_dir = %(image_cache_dir)s
 image_cache_driver = %(image_cache_driver)s
 policy_file = %(policy_file)s
 policy_default_rule = %(policy_default_rule)s
+db_auto_create = False
+sql_connection = %(sql_connection)s
 [paste_deploy]
 flavor = %(deployment_flavor)s
 """
@@ -300,7 +307,8 @@ class RegistryServer(Server):
         super(RegistryServer, self).__init__(test_dir, port)
         self.server_name = 'registry'
 
-        default_sql_connection = 'sqlite:///'
+        self.needs_database = True
+        default_sql_connection = 'sqlite:///tests.sqlite'
         self.sql_connection = os.environ.get('GLANCE_TEST_SQL_CONNECTION',
                                              default_sql_connection)
 
@@ -315,6 +323,7 @@ debug = %(debug)s
 bind_host = 0.0.0.0
 bind_port = %(bind_port)s
 log_file = %(log_file)s
+db_auto_create = False
 sql_connection = %(sql_connection)s
 sql_idle_timeout = 3600
 api_limit_max = 1000
@@ -625,11 +634,6 @@ class FunctionalTest(unittest.TestCase):
         if os.path.exists(self.test_dir):
             shutil.rmtree(self.test_dir)
 
-        # We do this here because the @runs_sql decorator above
-        # actually resets the registry server's sql_connection
-        # to the original (usually memory-based SQLite connection)
-        # and this block of code is run *before* the finally:
-        # block in that decorator...
         self._reset_database(self.registry_server.sql_connection)
 
     def run_sql_cmd(self, sql):

@@ -647,7 +647,6 @@ class TestBinGlance(functional.FunctionalTest):
 
         self.stop_servers()
 
-    @functional.runs_sql
     def test_add_location_with_checksum(self):
         """
         We test the following:
@@ -679,7 +678,6 @@ class TestBinGlance(functional.FunctionalTest):
 
         self.stop_servers()
 
-    @functional.runs_sql
     def test_add_location_without_checksum(self):
         """
         We test the following:
@@ -711,7 +709,6 @@ class TestBinGlance(functional.FunctionalTest):
 
         self.stop_servers()
 
-    @functional.runs_sql
     def test_add_clear(self):
         """
         We test the following:

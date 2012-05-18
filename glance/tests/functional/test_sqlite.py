@@ -25,7 +25,6 @@ from glance.tests.utils import execute
 class TestSqlite(functional.FunctionalTest):
     """Functional tests for sqlite-specific logic"""
 
-    @functional.runs_sql
     def test_big_int_mapping(self):
         """Ensure BigInteger not mapped to BIGINT"""
         self.cleanup()
