@@ -21,6 +21,10 @@ Routines for URL-safe encrypting/decrypting
 """
 
 import base64
+import os
+import random
+import string
+
 from Crypto.Cipher import AES
 
 
@@ -38,7 +42,8 @@ def urlsafe_encrypt(key, plaintext, blocksize=16):
         Pads text to be encrypted
         """
         pad_length = (blocksize - len(text) % blocksize)
-        pad = os.urandom(pad_length - 1)
+        pad = "".join([random.choice([chr(i) for i in range(1,0xFF)])
+                      for j in xrange(pad_length - 1)])
         # We use chr(0) as a delimiter between text and padding
         return text + chr(0) + pad
 
