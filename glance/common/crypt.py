@@ -20,10 +20,7 @@ Routines for URL-safe encrypting/decrypting
 """
 
 import base64
-
 from Crypto.Cipher import AES
-from Crypto import Random
-from Crypto.Random import random
 
 
 def urlsafe_encrypt(key, plaintext, blocksize=16):
@@ -40,13 +37,12 @@ def urlsafe_encrypt(key, plaintext, blocksize=16):
         Pads text to be encrypted
         """
         pad_length = (blocksize - len(text) % blocksize)
-        sr = random.StrongRandom()
-        pad = ''.join(chr(sr.randint(1, 0xFF)) for i in range(pad_length - 1))
+        pad = os.urandom(pad_length - 1)
         # We use chr(0) as a delimiter between text and padding
         return text + chr(0) + pad
 
     # random initial 16 bytes for CBC
-    init_vector = Random.get_random_bytes(16)
+    init_vector = os.urandom(16)
     cypher = AES.new(key, AES.MODE_CBC, init_vector)
     padded = cypher.encrypt(pad(str(plaintext)))
     return base64.urlsafe_b64encode(init_vector + padded)
