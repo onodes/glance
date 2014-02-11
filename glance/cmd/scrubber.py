@@ -34,6 +34,7 @@ from oslo.config import cfg
 
 from glance.common import config
 from glance.openstack.common import log
+from glance.openstack.common import systemd
 from glance import scrubber
 import glance.store
 
@@ -65,6 +66,7 @@ def main():
         if CONF.daemon:
             server = scrubber.Daemon(CONF.wakeup_time)
             server.start(app)
+            systemd.notify_once()
             server.wait()
         else:
             import eventlet
