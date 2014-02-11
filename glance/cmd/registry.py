@@ -47,6 +47,7 @@ import osprofiler.web
 from glance.common import config
 from glance.common import wsgi
 from glance import notifier
+from oslo_service import systemd
 
 CONF = cfg.CONF
 CONF.import_group("profiler", "glance.common.wsgi")
@@ -73,6 +74,7 @@ def main():
         server = wsgi.Server()
         server.start(config.load_paste_app('glance-registry'),
                      default_port=9191)
+        systemd.notify_once()
         server.wait()
     except RuntimeError as e:
         sys.exit("ERROR: %s" % encodeutils.exception_to_unicode(e))

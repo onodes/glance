@@ -36,6 +36,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 
 from glance.common import config
+from oslo_service import systemd
 from glance import scrubber
 
 eventlet.patcher.monkey_patch(all=False, socket=True, time=True, select=True,
@@ -62,6 +63,7 @@ def main():
         if CONF.daemon:
             server = scrubber.Daemon(CONF.wakeup_time)
             server.start(app)
+            systemd.notify_once()
             server.wait()
         else:
             app.run()
