@@ -69,10 +69,8 @@ _ALL_STORES = [
     'glance.store.rbd.Store',
     'glance.store.s3.Store',
     'glance.store.swift.Store',
-    'glance.store.sheepdog.Store',
     'glance.store.cinder.Store',
     'glance.store.gridfs.Store',
-    'glance.store.vmware_datastore.Store'
 ]
 
 
